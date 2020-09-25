@@ -1,7 +1,7 @@
 const app = require("express")()
 const bodyParser = require("body-parser")
 const sendMail = require("./mailer")
-const mysql = require("mysql")
+const MongoClient = require("mongodb").MongoClient
 require("dotenv").config()
 
 const port = process.env.PORT || 3000
@@ -9,15 +9,6 @@ const port = process.env.PORT || 3000
 app.set("views", "views")
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
-
-const con = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  dialect: process.env.DB_DIALECT,
-})
 
 app.get("/", (req, res) => {
   res.render("contact-us.ejs")
@@ -28,9 +19,16 @@ app.post("/contactUs", async (req, res) => {
   const phone = req.body.phone
   const email = req.body.email
   const message = req.body.message
-  const sql = `INSERT INTO users (username, phone, email, message) VALUES ('${username}', '${phone}', '${email}', '${message}')`
-  con.query(sql, function (err, result) {
+  const client = new MongoClient(process.env.MONGODB_URL, { useNewUrlParser: true });
+  client.connect(function (err, db) {
     if (err) throw err
+    const dbo = db.db('test')
+    const myobj = {username, phone, email, message}
+    dbo.collection("users").insertOne(myobj, function (err, res) {
+      if (err) throw err
+      console.log("1 document inserted")
+      db.close()
+    })
   })
   const mailOption = {
     data: {
